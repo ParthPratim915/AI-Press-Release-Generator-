@@ -1,0 +1,1941 @@
+<div id="gnn-pr-output" aria-live="polite">
+  <div class="gnn-pr-empty-state">
+    <span class="gnn-pr-empty-state__label">PRESS RELEASE PREVIEW</span>
+    <strong>Your generated press release will appear here.</strong>
+    <p>Complete the form above and select “Generate Your PR”.</p>
+  </div>
+</div>
+
+
+<!-- PR ACTION BUTTONS — MUST BE OUTSIDE gnn-pr-output -->
+<div id="gnn-pr-actions" class="gnn-pr-actions" hidden>
+
+  <button type="button" id="gnn-pr-email" class="gnn-pr-action gnn-pr-action--email">
+    <span>✉</span>
+    Email Press Release
+  </button>
+
+  <button type="button" id="gnn-pr-whatsapp" class="gnn-pr-action gnn-pr-action--whatsapp">
+    <span>◉</span>
+    Send via WhatsApp
+  </button>
+
+  <button type="button" id="gnn-pr-download" class="gnn-pr-action gnn-pr-action--download">
+    <span>↓</span>
+    Download .DOC
+  </button>
+
+</div>
+
+<style>
+  /* =========================================================
+     GNN AI PRESS RELEASE GENERATOR
+     Output + Loading UI
+     ========================================================= */
+
+  #gnn-pr-output {
+    width: 100%;
+    max-width: 920px;
+    min-height: 300px;
+    box-sizing: border-box;
+    margin: 34px auto 0;
+    padding: clamp(24px, 5vw, 48px);
+    background: #ffffff;
+    border: 1px solid #ded9d5;
+    border-top: 5px solid #e27d14;
+    border-radius: 12px;
+    box-shadow: 0 14px 36px rgba(37, 35, 39, .09);
+    color: #55525a;
+    font-size: clamp(16px, 2vw, 17px);
+    line-height: 1.8;
+  }
+
+  /* =========================================================
+     EMPTY STATE
+     ========================================================= */
+
+  .gnn-pr-empty-state {
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .gnn-pr-empty-state__label {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: #bd6510;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .1em;
+  }
+
+  .gnn-pr-empty-state strong {
+    color: #252327;
+    font-size: clamp(20px, 3vw, 25px);
+    line-height: 1.3;
+  }
+
+  .gnn-pr-empty-state p {
+    margin: 10px 0 0;
+  }
+
+  /* =========================================================
+     AI LOADING EXPERIENCE
+     ========================================================= */
+
+  .gnn-pr-loading {
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .gnn-pr-loading::before {
+    content: "";
+    position: absolute;
+    width: 230px;
+    height: 230px;
+    border-radius: 50%;
+    border: 1px solid rgba(226, 125, 20, .18);
+    animation: gnnPulse 2.2s ease-in-out infinite;
+  }
+
+  .gnn-pr-loading::after {
+    content: "";
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 1px solid rgba(226, 125, 20, .12);
+    animation: gnnPulse 2.2s ease-in-out .5s infinite;
+  }
+
+  .gnn-pr-ai-orb {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(
+      135deg,
+      #e27d14,
+      #bd6510
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 26px;
+    font-weight: 700;
+    box-shadow:
+      0 0 0 8px rgba(226, 125, 20, .08),
+      0 8px 30px rgba(189, 101, 16, .25);
+    animation: gnnOrb 1.8s ease-in-out infinite;
+    z-index: 2;
+  }
+
+  .gnn-pr-loading__label {
+    margin-top: 28px;
+    color: #bd6510;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    z-index: 2;
+  }
+
+  .gnn-pr-loading__title {
+    margin-top: 8px;
+    color: #252327;
+    font-size: clamp(21px, 3vw, 28px);
+    font-weight: 700;
+    line-height: 1.3;
+    z-index: 2;
+  }
+
+  .gnn-pr-loading__status {
+    min-height: 28px;
+    margin-top: 8px;
+    color: #55525a;
+    font-size: 15px;
+    z-index: 2;
+    transition: opacity .25s ease;
+  }
+
+  .gnn-pr-loading__steps {
+    width: min(420px, 90%);
+    margin-top: 22px;
+    z-index: 2;
+  }
+
+  .gnn-pr-loading__step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 9px 0;
+    color: #8a878c;
+    font-size: 13px;
+    text-align: left;
+    transition: all .3s ease;
+  }
+
+  .gnn-pr-loading__step.is-active {
+    color: #252327;
+    font-weight: 600;
+  }
+
+  .gnn-pr-loading__step.is-complete {
+    color: #bd6510;
+  }
+
+  .gnn-pr-loading__dot {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 9px;
+    border-radius: 50%;
+    background: #d7d2ce;
+  }
+
+  .gnn-pr-loading__step.is-active .gnn-pr-loading__dot {
+    background: #e27d14;
+    box-shadow: 0 0 0 5px rgba(226, 125, 20, .10);
+    animation: gnnDot 1s ease-in-out infinite;
+  }
+
+  .gnn-pr-loading__step.is-complete .gnn-pr-loading__dot {
+    background: #bd6510;
+  }
+
+  /* =========================================================
+     INDETERMINATE AI ACTIVITY BAR
+     ========================================================= */
+
+  .gnn-pr-progress {
+    position: relative;
+    width: min(420px, 90%);
+    height: 5px;
+    margin-top: 18px;
+    background: #eee9e5;
+    border-radius: 20px;
+    overflow: hidden;
+    z-index: 2;
+  }
+
+  .gnn-pr-progress__bar {
+    position: absolute;
+    top: 0;
+    left: -35%;
+    width: 35%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      #bd6510,
+      #e27d14,
+      transparent
+    );
+    border-radius: inherit;
+    animation: gnnProgressSweep 1.8s ease-in-out infinite;
+  }
+
+  @keyframes gnnProgressSweep {
+    0% {
+      left: -35%;
+    }
+
+    100% {
+      left: 100%;
+    }
+  }
+
+  .gnn-pr-loading__timer {
+    margin-top: 9px;
+    color: #999398;
+    font-size: 11px;
+    z-index: 2;
+  }
+
+  /* =========================================================
+     GENERATED ARTICLE
+     ========================================================= */
+
+  #gnn-pr-output article {
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  #gnn-pr-output h1 {
+    margin: 0 0 12px;
+    color: #252327;
+    font-size: clamp(28px, 5vw, 40px);
+    line-height: 1.18;
+    font-weight: 800;
+  }
+
+  #gnn-pr-output .gnn-pr-subheadline {
+    margin: 0 0 28px;
+    color: #55525a;
+    font-size: clamp(18px, 2.5vw, 22px);
+    line-height: 1.5;
+    font-weight: 500;
+  }
+
+  #gnn-pr-output .gnn-pr-release-line {
+    margin-bottom: 6px;
+    color: #252327;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  #gnn-pr-output .gnn-pr-meta {
+    margin-bottom: 22px;
+    color: #bd6510;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  #gnn-pr-output .gnn-pr-image {
+    width: 100%;
+    max-height: 520px;
+    object-fit: cover;
+    display: block;
+    margin: 24px 0 30px;
+    border-radius: 8px;
+  }
+
+  #gnn-pr-output p {
+    margin: 0 0 18px;
+  }
+
+  #gnn-pr-output h2 {
+    margin: 34px 0 13px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid #ded9d5;
+    color: #252327;
+    font-size: clamp(21px, 3vw, 24px);
+    line-height: 1.3;
+    font-weight: 750;
+  }
+
+  #gnn-pr-output .gnn-pr-section {
+    margin-top: 28px;
+  }
+
+  #gnn-pr-output .gnn-pr-section h2 {
+    margin-top: 0;
+  }
+
+  #gnn-pr-output .gnn-pr-section + .gnn-pr-section {
+    margin-top: 34px;
+  }
+
+  #gnn-pr-output ul {
+    margin: 0 0 20px;
+    padding-left: 24px;
+  }
+
+  #gnn-pr-output li {
+    margin-bottom: 8px;
+  }
+
+  #gnn-pr-output blockquote {
+    margin: 26px 0;
+    padding: 18px 22px;
+    border-left: 4px solid #e27d14;
+    border-radius: 0 7px 7px 0;
+    background: #fffaf5;
+    color: #252327;
+    font-style: italic;
+  }
+
+  .gnn-pr-contact {
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid #ded9d5;
+  }
+
+  .gnn-pr-contact strong {
+    color: #252327;
+  }
+
+  .gnn-pr-links {
+    margin-top: 12px;
+  }
+
+  .gnn-pr-links a {
+    color: #bd6510;
+    text-decoration: underline;
+  }
+
+  .gnn-pr-word-count {
+    margin-top: 30px;
+    color: #999398;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+
+  /* =========================================================
+     ANIMATIONS
+     ========================================================= */
+
+  @keyframes gnnOrb {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow:
+        0 0 0 8px rgba(226, 125, 20, .08),
+        0 8px 30px rgba(189, 101, 16, .25);
+    }
+
+    50% {
+      transform: scale(1.08);
+      box-shadow:
+        0 0 0 14px rgba(226, 125, 20, .05),
+        0 12px 38px rgba(189, 101, 16, .30);
+    }
+  }
+
+  @keyframes gnnPulse {
+    0%, 100% {
+      transform: scale(.85);
+      opacity: .2;
+    }
+
+    50% {
+      transform: scale(1.08);
+      opacity: .65;
+    }
+  }
+
+  @keyframes gnnDot {
+    0%, 100% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(1.45);
+    }
+  }
+
+  /* =========================================================
+     MOBILE
+     ========================================================= */
+
+  @media (max-width: 767px) {
+
+    #gnn-pr-output {
+      min-height: 250px;
+      margin-top: 24px;
+      padding: 28px 20px;
+      border-radius: 9px;
+    }
+
+    .gnn-pr-loading {
+      min-height: 380px;
+    }
+
+    #gnn-pr-output h1 {
+      font-size: 29px;
+    }
+
+    #gnn-pr-output .gnn-pr-subheadline {
+      font-size: 18px;
+    }
+
+    #gnn-pr-output .gnn-pr-image {
+      max-height: 360px;
+    }
+  }
+
+  /* Reduced motion accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    .gnn-pr-loading *,
+    .gnn-pr-loading::before,
+    .gnn-pr-loading::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+  
+  /* =========================================================
+   GENERATED PR ACTION BUTTONS
+   ========================================================= */
+
+.gnn-pr-actions {
+    width: min(920px, 100%);
+    margin: 22px auto 40px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    box-sizing: border-box;
+}
+
+.gnn-pr-actions[hidden] {
+    display: none !important;
+}
+
+.gnn-pr-action {
+    appearance: none;
+    border: 1px solid #ded9d5;
+    border-radius: 7px;
+    padding: 13px 20px;
+    min-height: 48px;
+    background: #ffffff;
+    color: #252327;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    transition:
+        background .2s ease,
+        color .2s ease,
+        border-color .2s ease,
+        transform .2s ease,
+        box-shadow .2s ease;
+}
+
+.gnn-pr-action span {
+    font-size: 17px;
+    line-height: 1;
+}
+
+.gnn-pr-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(37, 35, 39, .10);
+}
+
+/* Email */
+.gnn-pr-action--email:hover {
+    background: #252327;
+    border-color: #252327;
+    color: #ffffff;
+}
+
+/* WhatsApp */
+.gnn-pr-action--whatsapp:hover {
+    background: #25d366;
+    border-color: #25d366;
+    color: #ffffff;
+}
+
+/* Download */
+.gnn-pr-action--download {
+    background: #e27d14;
+    border-color: #e27d14;
+    color: #ffffff;
+}
+
+.gnn-pr-action--download:hover {
+    background: #bd6510;
+    border-color: #bd6510;
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   MOBILE ACTION BUTTONS
+   ========================================================= */
+
+@media (max-width: 767px) {
+
+    .gnn-pr-actions {
+        margin: 18px auto 30px;
+        padding: 0 15px;
+        flex-direction: column;
+    }
+
+    .gnn-pr-action {
+        width: 100%;
+    }
+
+}
+</style>
+
+<script>
+jQuery(function ($) {
+
+   const form = document.getElementById('pr_generator_form');
+const output = document.getElementById('gnn-pr-output');
+const actions = document.getElementById('gnn-pr-actions');
+
+if (!form || !output) return;
+
+
+    /* =========================================================
+       FIELD READER
+       ========================================================= */
+
+    function getValue(fieldId) {
+
+        const field = document.getElementById(
+            'form-field-' + fieldId
+        );
+
+        return field
+            ? String(field.value || '').trim()
+            : '';
+    }
+
+
+    /* =========================================================
+       TARGET AUDIENCE
+       ========================================================= */
+
+    function getTargetAudience() {
+
+        const values = [];
+
+        form.querySelectorAll(
+            'input[id*="target_audience"],' +
+            'select[id*="target_audience"],' +
+            'textarea[id*="target_audience"]'
+        ).forEach(function (field) {
+
+            if (
+                field.type === 'checkbox' &&
+                !field.checked
+            ) {
+                return;
+            }
+
+            if (
+                field.value &&
+                String(field.value).trim()
+            ) {
+                values.push(
+                    String(field.value).trim()
+                );
+            }
+
+        });
+
+        return values.join(', ');
+    }
+
+
+    /* =========================================================
+       HTML ESCAPE
+       ========================================================= */
+
+    function escapeHtml(value) {
+
+        const div =
+            document.createElement('div');
+
+        div.textContent =
+            value || '';
+
+        return div.innerHTML;
+    }
+
+
+    /* =========================================================
+       LINK PARSER
+       ========================================================= */
+
+    function normalizeUrl(url) {
+
+        if (!url) return '';
+
+        url = String(url).trim();
+
+        if (!/^https?:\/\//i.test(url)) {
+            url = 'https://' + url;
+        }
+
+        try {
+            const parsed = new URL(url);
+
+            if (
+                parsed.protocol !== 'http:' &&
+                parsed.protocol !== 'https:'
+            ) {
+                return '';
+            }
+
+            return parsed.href;
+
+        } catch (e) {
+            return '';
+        }
+    }
+
+
+    /* =========================================================
+       LOADING EXPERIENCE
+       ========================================================= */
+
+    /* =========================================================
+       LOADING EXPERIENCE
+       ========================================================= */
+
+    let loadingInterval = null;
+    let loadingStep = 0;
+    let loadingStart = 0;
+    let isGenerating = false;
+
+    const loadingMessages = [
+        'Reviewing the information you provided…',
+        'Structuring the announcement…',
+        'Writing the press release…',
+        'Refining the newsroom language…',
+        'Improving clarity and flow…',
+        'Checking the release for repetition…',
+        'Finalising your press release…'
+    ];
+
+    const loadingSteps = [
+        'Reviewing your information',
+        'Structuring the announcement',
+        'Writing the release',
+        'Refining language',
+        'Checking quality',
+        'Finalising the release'
+    ];
+
+
+    function showLoading() {
+
+        loadingStep = 0;
+        loadingStart = Date.now();
+        isGenerating = true;
+        
+         if (actions) {
+        actions.hidden = true;
+    }
+
+        output.innerHTML = `
+            <div class="gnn-pr-loading">
+
+                <div class="gnn-pr-ai-orb">
+                    ✦
+                </div>
+
+                <div class="gnn-pr-loading__label">
+                    GNN AI PRESS RELEASE GENERATOR
+                </div>
+
+                <div class="gnn-pr-loading__title">
+                    Preparing your press release
+                </div>
+
+                <div
+                    class="gnn-pr-loading__status"
+                    id="gnn-pr-loading-status"
+                >
+                    ${loadingMessages[0]}
+                </div>
+
+                <div class="gnn-pr-loading__steps">
+
+                    ${loadingSteps.map(function (step, index) {
+
+                        return `
+                            <div
+                                class="gnn-pr-loading__step ${
+                                    index === 0
+                                        ? 'is-active'
+                                        : ''
+                                }"
+                                data-step="${index}"
+                            >
+                                <span class="gnn-pr-loading__dot"></span>
+                                ${step}
+                            </div>
+                        `;
+
+                    }).join('')}
+
+                </div>
+
+                <div
+                    class="gnn-pr-progress"
+                    aria-hidden="true"
+                >
+                    <div class="gnn-pr-progress__bar"></div>
+                </div>
+
+                <div
+                    class="gnn-pr-loading__timer"
+                    id="gnn-pr-loading-timer"
+                >
+                    0 seconds
+                </div>
+
+            </div>
+        `;
+
+
+        const status =
+            document.getElementById(
+                'gnn-pr-loading-status'
+            );
+
+        const timer =
+            document.getElementById(
+                'gnn-pr-loading-timer'
+            );
+
+        const steps =
+            output.querySelectorAll(
+                '.gnn-pr-loading__step'
+            );
+
+
+        /*
+         * This animation is deliberately independent
+         * of the actual AI process.
+         *
+         * It indicates activity rather than claiming
+         * that a specific AI operation has completed.
+         */
+
+        loadingInterval = setInterval(function () {
+
+            const elapsed =
+                Math.floor(
+                    (Date.now() - loadingStart) / 1000
+                );
+
+
+            /* Elapsed time */
+
+            if (timer) {
+
+                timer.textContent =
+                    elapsed +
+                    (
+                        elapsed === 1
+                            ? ' second'
+                            : ' seconds'
+                    );
+            }
+
+
+            /*
+             * Rotate the visual workflow.
+             *
+             * We intentionally do not display a
+             * numerical completion percentage.
+             */
+
+            const nextStep =
+                Math.min(
+                    5,
+                    Math.floor(elapsed / 6)
+                );
+
+
+            if (
+                nextStep !== loadingStep
+            ) {
+
+                loadingStep =
+                    nextStep;
+
+
+                steps.forEach(
+                    function (step, index) {
+
+                        step.classList.remove(
+                            'is-active',
+                            'is-complete'
+                        );
+
+
+                        if (
+                            index < loadingStep
+                        ) {
+
+                            step.classList.add(
+                                'is-complete'
+                            );
+                        }
+
+
+                        if (
+                            index === loadingStep
+                        ) {
+
+                            step.classList.add(
+                                'is-active'
+                            );
+                        }
+
+                    }
+                );
+
+
+                if (status) {
+
+                    status.style.opacity =
+                        '0';
+
+
+                    setTimeout(function () {
+
+                        status.textContent =
+                            loadingMessages[
+                                Math.min(
+                                    loadingStep,
+                                    loadingMessages.length - 1
+                                )
+                            ];
+
+
+                        status.style.opacity =
+                            '1';
+
+                    }, 180);
+                }
+            }
+
+        }, 1000);
+    }
+
+
+    function stopLoading() {
+
+        if (loadingInterval) {
+
+            clearInterval(
+                loadingInterval
+            );
+
+            loadingInterval = null;
+        }
+
+        isGenerating = false;
+    }
+
+
+    /* =========================================================
+       ERROR
+       ========================================================= */
+
+    function showError(message) {
+
+        stopLoading();
+        
+         if (actions) {
+        actions.hidden = true;
+    }
+
+        output.innerHTML = `
+            <div class="gnn-pr-empty-state">
+
+                <span class="gnn-pr-empty-state__label">
+                    GENERATION ERROR
+                </span>
+
+                <strong>
+                    We couldn't generate the press release.
+                </strong>
+
+                <p>
+                    ${escapeHtml(message)}
+                </p>
+
+                <p style="margin-top:14px;">
+                    Please review the information and try again.
+                </p>
+
+            </div>
+        `;
+    }
+
+
+    /* =========================================================
+       PARAGRAPHS
+       ========================================================= */
+
+    function addParagraphs(parent, paragraphs) {
+
+        if (!Array.isArray(paragraphs)) {
+            return;
+        }
+
+        paragraphs.forEach(function (text) {
+
+            if (
+                !text ||
+                !String(text).trim()
+            ) {
+                return;
+            }
+
+            const p =
+                document.createElement('p');
+
+            p.textContent =
+                String(text).trim();
+
+            parent.appendChild(p);
+
+        });
+    }
+
+
+    /* =========================================================
+       STRUCTURED SECTIONS
+       ========================================================= */
+
+    function renderSections(parent, sections) {
+
+        if (!Array.isArray(sections)) {
+            return false;
+        }
+
+        let rendered = false;
+
+        sections.forEach(function (section) {
+
+            if (!section) {
+                return;
+            }
+
+            const headingText =
+                section.heading
+                    ? String(section.heading).trim()
+                    : '';
+
+            const paragraphs =
+                Array.isArray(section.paragraphs)
+                    ? section.paragraphs
+                    : [];
+
+
+            if (
+                !headingText &&
+                !paragraphs.length
+            ) {
+                return;
+            }
+
+
+            const wrapper =
+                document.createElement('section');
+
+            wrapper.className =
+                'gnn-pr-section';
+
+
+            if (headingText) {
+
+                const heading =
+                    document.createElement('h2');
+
+                heading.textContent =
+                    headingText;
+
+                wrapper.appendChild(
+                    heading
+                );
+            }
+
+
+            addParagraphs(
+                wrapper,
+                paragraphs
+            );
+
+
+            parent.appendChild(
+                wrapper
+            );
+
+            rendered = true;
+
+        });
+
+        return rendered;
+    }
+
+
+    /* =========================================================
+       GENERATED ARTICLE
+       ========================================================= */
+
+    function renderArticle(data) {
+
+        stopLoading();
+
+        output.replaceChildren();
+
+        const article =
+            document.createElement('article');
+
+
+        /* =====================================================
+           FOR IMMEDIATE RELEASE + DATE
+           ===================================================== */
+
+        const releaseLine =
+            document.createElement('div');
+
+        releaseLine.className =
+            'gnn-pr-release-line';
+
+        releaseLine.textContent =
+            'For Immediate Release' +
+            (
+                data.date
+                    ? ' · ' + data.date
+                    : ''
+            );
+
+        article.appendChild(
+            releaseLine
+        );
+
+
+        /* =====================================================
+           CITY / ANNOUNCEMENT TYPE
+           ===================================================== */
+
+        if (
+            data.announcement_type ||
+            data.city
+        ) {
+
+            const meta =
+                document.createElement('div');
+
+            meta.className =
+                'gnn-pr-meta';
+
+            const metaParts = [];
+
+            if (data.announcement_type) {
+                metaParts.push(
+                    data.announcement_type
+                );
+            }
+
+            if (data.city) {
+                metaParts.push(
+                    data.city
+                );
+            }
+
+            meta.textContent =
+                metaParts.join(' · ');
+
+            article.appendChild(
+                meta
+            );
+        }
+
+
+        /* =====================================================
+           MAIN HEADLINE
+           ===================================================== */
+
+        const title =
+            document.createElement('h1');
+
+        title.textContent =
+            data.headline ||
+            'Generated Press Release';
+
+        article.appendChild(
+            title
+        );
+
+
+        /* =====================================================
+           SUBHEADLINE
+           ===================================================== */
+
+        if (
+            data.sub_headline
+        ) {
+
+            const subheadline =
+                document.createElement('div');
+
+            subheadline.className =
+                'gnn-pr-subheadline';
+
+            subheadline.textContent =
+                data.sub_headline;
+
+            article.appendChild(
+                subheadline
+            );
+        }
+
+
+        /* =====================================================
+           IMAGE
+           ===================================================== */
+
+        if (data.image_url) {
+
+            const imageUrl =
+                normalizeUrl(
+                    data.image_url
+                );
+
+            if (imageUrl) {
+
+                const image =
+                    document.createElement('img');
+
+                image.className =
+                    'gnn-pr-image';
+
+                image.src =
+                    imageUrl;
+
+                image.alt =
+                    data.headline ||
+                    'Press release image';
+
+                image.loading =
+                    'lazy';
+
+                image.referrerPolicy =
+                    'no-referrer';
+
+                image.onerror =
+                    function () {
+                        image.remove();
+                    };
+
+                article.appendChild(
+                    image
+                );
+            }
+        }
+
+
+        /* =====================================================
+           DATELINE
+           ===================================================== */
+
+        if (
+            data.dateline
+        ) {
+
+            const dateline =
+                document.createElement('p');
+
+            dateline.textContent =
+                data.dateline;
+
+            article.appendChild(
+                dateline
+            );
+        }
+
+
+        /* =====================================================
+           BODY / STRUCTURED SECTIONS
+           ===================================================== */
+
+        const hasStructuredSections =
+            renderSections(
+                article,
+                data.sections
+            );
+
+
+        /*
+         * Backward compatibility:
+         * If the backend does not yet return
+         * structured sections, continue using
+         * the existing body array.
+         */
+
+        if (!hasStructuredSections) {
+
+            addParagraphs(
+                article,
+                data.body
+            );
+        }
+
+
+        /* =====================================================
+           KEY HIGHLIGHTS
+           ===================================================== */
+
+        if (
+            Array.isArray(
+                data.key_highlights
+            ) &&
+            data.key_highlights.length
+        ) {
+
+            const heading =
+                document.createElement('h2');
+
+            heading.textContent =
+                'Key Highlights';
+
+            article.appendChild(
+                heading
+            );
+
+
+            const list =
+                document.createElement('ul');
+
+
+            data.key_highlights.forEach(
+                function (point) {
+
+                    if (!point) return;
+
+                    const item =
+                        document.createElement('li');
+
+                    item.textContent =
+                        String(point).trim();
+
+                    list.appendChild(
+                        item
+                    );
+
+                }
+            );
+
+
+            article.appendChild(
+                list
+            );
+        }
+
+
+        /* =====================================================
+           EXECUTIVE COMMENT
+           ===================================================== */
+
+        if (
+            data.executive_comment
+        ) {
+
+            const heading =
+                document.createElement('h2');
+
+            heading.textContent =
+                'Executive Comment';
+
+            article.appendChild(
+                heading
+            );
+
+
+            const quote =
+                document.createElement(
+                    'blockquote'
+                );
+
+            quote.textContent =
+                data.executive_comment;
+
+            article.appendChild(
+                quote
+            );
+        }
+
+
+        /* =====================================================
+           ABOUT COMPANY
+           ===================================================== */
+
+        if (
+            data.about_company
+        ) {
+
+            const company =
+                data.company_name ||
+                getValue('company_name') ||
+                'Company';
+
+
+            const heading =
+                document.createElement('h2');
+
+            heading.textContent =
+                'About ' + company;
+
+            article.appendChild(
+                heading
+            );
+
+
+            const about =
+                document.createElement('p');
+
+            about.textContent =
+                data.about_company;
+
+            article.appendChild(
+                about
+            );
+        }
+
+
+        /* =====================================================
+           MEDIA CONTACT
+           ===================================================== */
+
+        if (
+            data.business_email
+        ) {
+
+            const contact =
+                document.createElement(
+                    'div'
+                );
+
+            contact.className =
+                'gnn-pr-contact';
+
+            contact.innerHTML =
+                '<strong>Media Contact</strong><br>' +
+                escapeHtml(
+                    data.business_email
+                );
+
+            article.appendChild(
+                contact
+            );
+        }
+
+
+        /* =====================================================
+           RELEVANT LINKS
+           ===================================================== */
+
+        if (
+            Array.isArray(
+                data.relevant_links
+            ) &&
+            data.relevant_links.length
+        ) {
+
+            const linksWrapper =
+                document.createElement(
+                    'div'
+                );
+
+            linksWrapper.className =
+                'gnn-pr-links';
+
+            const heading =
+                document.createElement(
+                    'strong'
+                );
+
+            heading.textContent =
+                'More Information';
+
+            linksWrapper.appendChild(
+                heading
+            );
+
+
+            data.relevant_links.forEach(
+                function (url) {
+
+                    const normalized =
+                        normalizeUrl(url);
+
+                    if (!normalized) {
+                        return;
+                    }
+
+                    const br =
+                        document.createElement(
+                            'br'
+                        );
+
+                    const link =
+                        document.createElement(
+                            'a'
+                        );
+
+                    link.href =
+                        normalized;
+
+                    link.target =
+                        '_blank';
+
+                    link.rel =
+                        'noopener noreferrer';
+
+                    link.textContent =
+                        normalized;
+
+                    linksWrapper.appendChild(
+                        br
+                    );
+
+                    linksWrapper.appendChild(
+                        link
+                    );
+                }
+            );
+
+
+            article.appendChild(
+                linksWrapper
+            );
+        }
+
+
+        /* =====================================================
+           WORD COUNT
+           ===================================================== */
+
+        if (
+            typeof data.word_count !==
+            'undefined'
+        ) {
+
+            const count =
+                document.createElement(
+                    'div'
+                );
+
+            count.className =
+                'gnn-pr-word-count';
+
+            count.textContent =
+                data.word_count +
+                ' words';
+
+            article.appendChild(
+                count
+            );
+        }
+
+
+        output.appendChild(
+            article
+        );
+        
+        /* Show action buttons after successful generation */
+if (actions) {
+    actions.hidden = false;
+}
+
+
+        window.scrollTo({
+
+            top:
+                output.getBoundingClientRect()
+                    .top +
+                window.scrollY -
+                80,
+
+            behavior:
+                'smooth'
+        });
+    }
+
+
+    /* =========================================================
+       SUBMIT
+       ========================================================= */
+
+    form.addEventListener(
+        'submit',
+        async function (event) {
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            if (isGenerating) {
+                return;
+            }
+
+
+            if (
+                !form.reportValidity()
+            ) {
+                return;
+            }
+
+
+            /* =================================================
+               PAYLOAD
+               ================================================= */
+
+            const payload = {
+
+                /* Existing fields */
+
+                company_name:
+                    getValue(
+                        'company_name'
+                    ),
+
+                headline:
+                    getValue(
+                        'headline'
+                    ),
+
+                announcement_type:
+                    getValue(
+                        'announcement_type'
+                    ),
+
+                city:
+                    getValue(
+                        'city'
+                    ),
+
+                core_message:
+                    getValue(
+                        'core_message'
+                    ),
+
+                key_points:
+                    getValue(
+                        'key_points'
+                    ),
+
+                target_audience:
+                    getTargetAudience(),
+
+                executive_quote:
+                    getValue(
+                        'executive_quote'
+                    ),
+
+                business_email:
+                    getValue(
+                        'business_email'
+                    ),
+
+                about_company:
+                    getValue(
+                        'about_company'
+                    ),
+
+
+                /* New fields */
+
+                announcement_date:
+                    getValue(
+                        'announcement_date'
+                    ),
+
+                sub_headline:
+                    getValue(
+                        'sub_headline'
+                    ),
+
+                image_url:
+                    getValue(
+                        'pr_image'
+                    ),
+
+                relevant_links:
+                    getValue(
+                        'relevant_links'
+                    )
+
+            };
+
+
+            showLoading();
+
+
+            /*
+             * Frontend safety timeout.
+             *
+             * The WordPress AI Client remains configured
+             * for the longer server-side timeout.
+             *
+             * This limits the visitor-facing wait to
+             * 60 seconds without changing the backend
+             * AI timeout.
+             */
+
+            const controller =
+                new AbortController();
+
+            const timeoutId =
+                setTimeout(
+                    function () {
+                        controller.abort();
+                    },
+                    120000
+                );
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        '/wp-json/gnn/v1/generate-pr',
+                        {
+                            method: 'POST',
+
+                            headers: {
+                                'Content-Type':
+                                    'application/json'
+                            },
+
+                            signal:
+                                controller.signal,
+
+                            body:
+                                JSON.stringify(
+                                    payload
+                                )
+                        }
+                    );
+
+
+                clearTimeout(
+                    timeoutId
+                );
+
+
+                let result;
+
+                try {
+
+                    result =
+                        await response.json();
+
+                } catch (jsonError) {
+
+                    throw new Error(
+                        'The generator returned an invalid response.'
+                    );
+                }
+
+
+                if (
+                    !response.ok ||
+                    !result.success
+                ) {
+
+                    throw new Error(
+                        result.message ||
+                        'AI generation failed.'
+                    );
+                }
+
+
+                if (
+                    !result.press_release
+                ) {
+
+                    throw new Error(
+                        'The AI returned an incomplete press release.'
+                    );
+                }
+
+
+                renderArticle({
+
+                    ...result.press_release,
+
+                    word_count:
+                        result.word_count
+
+                });
+
+
+            } catch (error) {
+
+                clearTimeout(
+                    timeoutId
+                );
+
+                console.error(
+                    'GNN AI Generator:',
+                    error
+                );
+
+
+                if (
+                    error.name ===
+                    'AbortError'
+                ) {
+
+                    showError(
+                        'The generation request took longer than 120 seconds. Please try again. Your information has not been lost.'
+                    );
+
+                } else {
+
+                    showError(
+                        error.message ||
+                        'Please try again.'
+                    );
+                }
+            }
+
+        },
+        true
+    );
+
+});
+</script>
+
+
+
+<script>
+jQuery(function ($) {
+  const output = document.getElementById('gnn-pr-output');
+
+  /* Replace these values */
+  const adminEmail = 'hello@germannewsnetwork.com';
+  const adminWhatsApp = '919870527870';
+  /* Example WhatsApp format: 919876543210 — no +, spaces, or symbols */
+
+  function getGeneratedArticle() {
+    return output ? output.querySelector('article') : null;
+  }
+
+  function getGeneratedText() {
+    const article = getGeneratedArticle();
+    return article ? article.innerText.trim() : '';
+  }
+
+  function requireGeneratedOutput() {
+    const text = getGeneratedText();
+
+    if (!text) {
+      alert('Please generate your press release before using this option.');
+      output.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return null;
+    }
+
+    return text;
+  }
+
+  /* Opens a prefilled email draft for the visitor to review and send */
+  $('#gnn-pr-email').on('click', function (event) {
+    event.preventDefault();
+
+    const text = requireGeneratedOutput();
+    if (!text) return;
+
+    const headline =
+      getGeneratedArticle().querySelector('h1')?.innerText ||
+      'Generated Press Release';
+
+    const subject = 'Press Release Submission: ' + headline;
+    const body = 'A press release was generated on German News Network:\n\n' + text;
+
+    window.location.href =
+      'mailto:' + adminEmail +
+      '?subject=' + encodeURIComponent(subject) +
+      '&body=' + encodeURIComponent(body);
+  });
+
+  /* Opens a WhatsApp message for the visitor to review and send */
+  $('#gnn-pr-whatsapp').on('click', function (event) {
+    event.preventDefault();
+
+    const text = requireGeneratedOutput();
+    if (!text) return;
+
+    const message =
+      'Press Release Submission – German News Network\n\n' + text;
+
+    window.open(
+      'https://wa.me/' + adminWhatsApp +
+      '?text=' + encodeURIComponent(message),
+      '_blank',
+      'noopener'
+    );
+  });
+
+  /* Downloads a Word-compatible .doc document */
+  $('#gnn-pr-download').on('click', function (event) {
+    event.preventDefault();
+
+    const article = getGeneratedArticle();
+    const text = requireGeneratedOutput();
+    if (!article || !text) return;
+
+    const headline =
+      article.querySelector('h1')?.innerText ||
+      'press-release';
+
+    const documentHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${headline}</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            max-width: 760px;
+            margin: 45px auto;
+            color: #252327;
+            font-size: 12pt;
+            line-height: 1.7;
+          }
+          h1 {
+            font-size: 25pt;
+            line-height: 1.2;
+            margin-bottom: 12px;
+          }
+          h2 {
+            font-size: 16pt;
+            margin-top: 28px;
+          }
+          .gnn-pr-meta {
+            color: #bd6510;
+            font-weight: bold;
+            text-transform: uppercase;
+          }
+          blockquote {
+            margin: 20px 0;
+            padding: 14px;
+            border-left: 4px solid #e27d14;
+            background: #fffaf5;
+            font-style: italic;
+          }
+        </style>
+      </head>
+      <body>${article.innerHTML}</body>
+      </html>`;
+
+    const blob = new Blob(
+      ['\ufeff', documentHtml],
+      { type: 'application/msword' }
+    );
+
+    const downloadLink = document.createElement('a');
+    const safeFilename = headline
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase();
+
+    downloadLink.href = URL.createObjectURL(blob);
+    downloadLink.download = (safeFilename || 'press-release') + '.doc';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+
+    setTimeout(() => URL.revokeObjectURL(downloadLink.href), 1000);
+  });
+});
+</script>
