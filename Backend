@@ -1,0 +1,2178 @@
+/**
+ * =========================================================
+ * GNN AI PRESS RELEASE GENERATOR
+ * German News Network
+ *
+ * WORKING / SIMPLIFIED VERSION
+ *
+ * - Native WordPress AI Client
+ * - Plain generate_text()
+ * - Single AI generation pass
+ * - Exactly 4 editorial sections
+ * - AI internally targets minimum 400 words
+ * - PHP counts generated words for information only
+ * - NO minimum/maximum rejection
+ * - NO second AI request
+ * - NO JSON schema requirement
+ * - NO quote word-count mathematics
+ * - NO dynamic word-range mathematics
+ * - Supplied image URL remains authoritative
+ * - Supplied links remain authoritative
+ * - Supplied business email remains authoritative
+ * - 120-second server timeout
+ *
+ * IMPORTANT:
+ * Uses the native WordPress AI Client.
+ * No OpenAI API key is stored here.
+ * =========================================================
+ */
+
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+
+/**
+ * =========================================================
+ * AI CLIENT TIMEOUT
+ * =========================================================
+ *
+ * The AI provider is allowed up to 120 seconds.
+ *
+ * This is only a maximum waiting time.
+ * It does NOT make the AI itself faster or slower.
+ * =========================================================
+ */
+
+add_filter(
+	'wp_ai_client_default_request_timeout',
+	function ( $timeout ) {
+
+		return 120.0;
+
+	}
+);
+
+
+/**
+ * =========================================================
+ * REGISTER REST ENDPOINT
+ * =========================================================
+ */
+
+add_action(
+	'rest_api_init',
+	function () {
+
+		register_rest_route(
+			'gnn/v1',
+			'/generate-pr',
+			array(
+
+				'methods' =>
+					'POST',
+
+				'callback' =>
+					'gnn_generate_press_release',
+
+				'permission_callback' =>
+					'__return_true',
+
+			)
+		);
+
+	}
+);
+
+
+/**
+ * =========================================================
+ * GENERATE PRESS RELEASE
+ * =========================================================
+ */
+
+function gnn_generate_press_release( WP_REST_Request $request ) {
+
+
+	/* ---------------------------------------------------------
+	 * CHECK WORDPRESS AI CLIENT
+	 * --------------------------------------------------------- */
+
+	if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
+
+		return new WP_Error(
+			'gnn_ai_unavailable',
+			'The WordPress AI Client is not available. Please check the AI provider connection.',
+			array(
+				'status' => 503,
+			)
+		);
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * BASIC RATE LIMIT
+	 * --------------------------------------------------------- */
+
+	$ip =
+		isset( $_SERVER['REMOTE_ADDR'] )
+			? sanitize_text_field(
+				wp_unslash(
+					$_SERVER['REMOTE_ADDR']
+				)
+			)
+			: 'unknown';
+
+
+	$rate_key =
+		'gnn_pr_' .
+		md5( $ip );
+
+
+	if ( get_transient( $rate_key ) ) {
+
+		return new WP_Error(
+			'gnn_rate_limit',
+			'Please wait a few seconds before generating another press release.',
+			array(
+				'status' => 429,
+			)
+		);
+
+	}
+
+
+	set_transient(
+		$rate_key,
+		true,
+		15
+	);
+
+
+	/* ---------------------------------------------------------
+	 * RECEIVE JSON DATA
+	 * --------------------------------------------------------- */
+
+	$params =
+		$request->get_json_params();
+
+
+	if ( ! is_array( $params ) ) {
+
+		return new WP_Error(
+			'gnn_invalid_request',
+			'Invalid generator request.',
+			array(
+				'status' => 400,
+			)
+		);
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * INPUT FIELDS
+	 * --------------------------------------------------------- */
+
+	$company =
+		sanitize_text_field(
+			$params['company_name'] ?? ''
+		);
+
+
+	$headline =
+		sanitize_text_field(
+			$params['headline'] ?? ''
+		);
+
+
+	$sub_headline =
+		sanitize_text_field(
+			$params['sub_headline'] ?? ''
+		);
+
+
+	$announcement_type =
+		sanitize_text_field(
+			$params['announcement_type'] ?? ''
+		);
+
+
+	$city =
+		sanitize_text_field(
+			$params['city'] ?? ''
+		);
+
+
+	$core_message =
+		sanitize_textarea_field(
+			$params['core_message'] ?? ''
+		);
+
+
+	$key_points =
+		sanitize_textarea_field(
+			$params['key_points'] ?? ''
+		);
+
+
+	$target_audience =
+		sanitize_textarea_field(
+			$params['target_audience'] ?? ''
+		);
+
+
+	$executive_quote =
+		sanitize_textarea_field(
+			$params['executive_quote'] ?? ''
+		);
+
+
+	$business_email =
+		sanitize_email(
+			$params['business_email'] ?? ''
+		);
+
+
+	$about_company =
+		sanitize_textarea_field(
+			$params['about_company'] ?? ''
+		);
+
+
+	$announcement_date =
+		sanitize_text_field(
+			$params['announcement_date'] ?? ''
+		);
+
+
+	$image_url =
+		esc_url_raw(
+			$params['image_url'] ?? ''
+		);
+
+
+	$relevant_links =
+		sanitize_textarea_field(
+			$params['relevant_links'] ?? ''
+		);
+
+
+	/* ---------------------------------------------------------
+	 * REQUIRED VALIDATION
+	 * --------------------------------------------------------- */
+
+	if ( '' === $company ) {
+
+		return new WP_Error(
+			'gnn_missing_company',
+			'Please enter the organization name.',
+			array(
+				'status' => 400,
+			)
+		);
+
+	}
+
+
+	if ( '' === $core_message ) {
+
+		return new WP_Error(
+			'gnn_missing_message',
+			'Please enter the core message of the announcement.',
+			array(
+				'status' => 400,
+			)
+		);
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * LIMIT INPUT SIZE
+	 * --------------------------------------------------------- */
+
+	$company =
+		mb_substr(
+			$company,
+			0,
+			250
+		);
+
+
+	$headline =
+		mb_substr(
+			$headline,
+			0,
+			400
+		);
+
+
+	$sub_headline =
+		mb_substr(
+			$sub_headline,
+			0,
+			500
+		);
+
+
+	$announcement_type =
+		mb_substr(
+			$announcement_type,
+			0,
+			150
+		);
+
+
+	$city =
+		mb_substr(
+			$city,
+			0,
+			150
+		);
+
+
+	$announcement_date =
+		mb_substr(
+			$announcement_date,
+			0,
+			100
+		);
+
+
+	$core_message =
+		mb_substr(
+			$core_message,
+			0,
+			7000
+		);
+
+
+	$key_points =
+		mb_substr(
+			$key_points,
+			0,
+			5000
+		);
+
+
+	$target_audience =
+		mb_substr(
+			$target_audience,
+			0,
+			1000
+		);
+
+
+	$executive_quote =
+		mb_substr(
+			$executive_quote,
+			0,
+			3000
+		);
+
+
+	$about_company =
+		mb_substr(
+			$about_company,
+			0,
+			5000
+		);
+
+
+	$image_url =
+		mb_substr(
+			$image_url,
+			0,
+			2000
+		);
+
+
+	$relevant_links =
+		mb_substr(
+			$relevant_links,
+			0,
+			5000
+		);
+
+
+	/* ---------------------------------------------------------
+	 * DATE FALLBACK
+	 * --------------------------------------------------------- */
+
+	$current_date =
+		wp_date(
+			'F j, Y'
+		);
+
+
+	if ( '' === $announcement_date ) {
+
+		$announcement_date =
+			$current_date;
+
+	}
+
+
+	/* =========================================================
+	 * AI PROMPT
+	 * =========================================================
+	 *
+	 * IMPORTANT:
+	 *
+	 * There is deliberately NO mathematical word-count
+	 * calculation before the AI request.
+	 *
+	 * The AI simply checks whether its main editorial content
+	 * is approximately 400 words or more.
+	 *
+	 * PHP counts the final result afterward, but does NOT
+	 * reject the result based on the count.
+	 * =========================================================
+	 */
+
+	$prompt = <<<PROMPT
+You are the senior press-release editor for German News Network (GNN).
+
+Create ONE publication-ready professional press release from the client's supplied information.
+
+The client's supplied information is the ONLY factual source.
+
+Transform, organize and professionally edit the supplied information into fresh newsroom-quality English.
+
+Do not merely rewrite the fields in their original order.
+
+============================================================
+WORD COUNT
+============================================================
+
+The main editorial content should contain AT LEAST 400 words.
+
+This is a minimum target for the main article.
+
+The main editorial content consists of:
+
+- all paragraphs inside the four sections
+- plus the executive comment when an executive quote is supplied
+
+Do NOT count these toward the main editorial word count:
+
+- headline
+- subheadline
+- announcement type
+- date
+- city
+- image URL
+- dateline
+- section headings
+- key highlights
+- About Company
+- business email
+- relevant links
+
+Before returning the final response, internally check the approximate word count of the main editorial content.
+
+If the main editorial content is below 400 words, expand the editorial paragraphs using additional relevant information already supplied by the client.
+
+If the main editorial content is 400 words or more, finalize the press release.
+
+Do not repeatedly count and rewrite unnecessarily.
+
+Do not pad the article with repetition.
+
+Do not invent information simply to reach 400 words.
+
+Do not invent facts, figures, statistics, customers, partnerships, awards, certifications, executives, locations, dates, products, services, achievements, market claims, URLs or quotations.
+
+============================================================
+EXACT SECTION STRUCTURE
+============================================================
+
+The article MUST contain exactly four sections.
+
+Use these headings in this exact order:
+
+1. Opening
+2. Key Development
+3. Context and Significance
+4. Company Outlook
+
+Do not omit a section.
+
+Do not add a fifth section.
+
+Do not merge sections.
+
+Each section must contain one or more complete paragraphs.
+
+============================================================
+EDITORIAL STRUCTURE
+============================================================
+
+Opening:
+
+Introduce the organization, the announcement and the most important significance.
+
+Key Development:
+
+Explain the central development and the important details supplied by the client.
+
+Context and Significance:
+
+Explain relevant context, applications, implications, target audience relevance or supporting information based only on supplied facts.
+
+Company Outlook:
+
+Close with relevant company direction, next steps or broader significance ONLY when supported by the supplied information.
+
+Do not invent future plans.
+
+Use an inverted-pyramid structure.
+
+Put the most important information first.
+
+============================================================
+EDITORIAL QUALITY
+============================================================
+
+The release should be:
+
+- professionally edited
+- natural and human-sounding
+- factual
+- clear
+- authoritative without exaggeration
+- concise
+- publication-ready
+- suitable for an international newsroom
+- written in professional international English
+
+Use fresh newsroom language.
+
+Avoid repetitive sentence structures.
+
+Avoid repeatedly beginning paragraphs with:
+
+"The company..."
+"The announcement..."
+"This..."
+"With..."
+"As..."
+"According to..."
+"In addition..."
+"Furthermore..."
+
+Vary sentence length and sentence structure.
+
+Every paragraph should add useful information, explanation, context or development.
+
+Do not repeat the same fact merely to increase length.
+
+============================================================
+FACTUAL ACCURACY — ABSOLUTE RULE
+============================================================
+
+ONLY use information supplied by the client.
+
+NEVER invent or assume:
+
+- statistics
+- percentages
+- financial figures
+- customers
+- clients
+- partnerships
+- awards
+- certifications
+- executives
+- spokespersons
+- job numbers
+- investment amounts
+- locations
+- dates
+- products
+- services
+- research findings
+- market figures
+- market leadership claims
+- media coverage
+- future plans
+- company achievements
+- quotations
+- URLs
+- website addresses
+- technical specifications
+- performance claims
+- geographic expansion
+- business relationships
+
+If a fact is missing, leave it out.
+
+Do not fill factual gaps with assumptions.
+
+Do not use general industry knowledge as if it were a fact about the client's organization.
+
+Do not turn an implication into a stated fact.
+
+============================================================
+ORIGINALITY / ANTI-REPETITION
+============================================================
+
+Write the release from the supplied facts in fresh language.
+
+Do NOT copy the wording of the client's input except where exact wording is necessary for:
+
+- official names
+- product names
+- organization names
+- titles
+- quotations
+- URLs
+- unavoidable factual terminology
+
+Do NOT imitate any example press release.
+
+Avoid repetitive AI writing patterns.
+
+Vary paragraph openings naturally.
+
+Do not repeatedly use the same sentence structure.
+
+Do not repeat the same fact merely to create additional words.
+
+============================================================
+NO GENERIC AI / MARKETING CLICHES
+============================================================
+
+Avoid generic promotional language unless the client explicitly supplied and supported it.
+
+Avoid phrases such as:
+
+"game-changing"
+"revolutionary"
+"groundbreaking"
+"exciting new era"
+"rapidly evolving world"
+"leveraging cutting-edge technology"
+"unlocking new possibilities"
+"transformative journey"
+"seamless experience"
+"next-generation solution"
+
+Prefer specific, factual language.
+
+Do not exaggerate.
+
+============================================================
+HEADLINE
+============================================================
+
+Client headline:
+
+{$headline}
+
+Professionally refine the headline if necessary.
+
+Preserve its central meaning.
+
+Do not introduce unsupported facts.
+
+============================================================
+SUBHEADLINE
+============================================================
+
+Client subheadline:
+
+{$sub_headline}
+
+Create a concise professional subheadline based only on the supplied information.
+
+If the supplied subheadline is useful, polish it.
+
+The subheadline must complement the headline rather than simply repeat it.
+
+============================================================
+ORGANIZATION
+============================================================
+
+Organization Name:
+
+{$company}
+
+Use the supplied organization name.
+
+============================================================
+ANNOUNCEMENT TYPE
+============================================================
+
+{$announcement_type}
+
+Use this to determine the appropriate editorial emphasis.
+
+Do not invent additional information.
+
+============================================================
+ANNOUNCEMENT DATE
+============================================================
+
+{$announcement_date}
+
+Use this exact supplied date.
+
+Do not invent or substitute another date.
+
+============================================================
+CITY
+============================================================
+
+{$city}
+
+Use this city for the dateline when supplied.
+
+Do not invent a city.
+
+============================================================
+CORE MESSAGE
+============================================================
+
+{$core_message}
+
+This is the primary factual basis of the release.
+
+============================================================
+KEY POINTS
+============================================================
+
+{$key_points}
+
+Integrate relevant points naturally into the article.
+
+Do not simply copy the input as a list unless a list genuinely improves the release.
+
+Do not repeat the same key point unnecessarily.
+
+============================================================
+TARGET AUDIENCE
+============================================================
+
+{$target_audience}
+
+Use this only to determine appropriate terminology, emphasis and context.
+
+Do not mention the target audience explicitly unless it naturally belongs in the release.
+
+============================================================
+EXECUTIVE QUOTE
+============================================================
+
+{$executive_quote}
+
+If a quote is supplied:
+
+- preserve its factual meaning
+- preserve the supplied speaker attribution
+- correct grammar where necessary
+- improve readability without changing meaning
+- return it in "executive_comment"
+
+Do NOT create a new quotation.
+
+Do NOT expand the quotation.
+
+Do NOT invent a speaker.
+
+If no quote is supplied, return:
+
+"executive_comment": ""
+
+Do not place the executive quote inside the four section paragraphs.
+
+============================================================
+ABOUT COMPANY
+============================================================
+
+{$about_company}
+
+Professionally edit the supplied company information.
+
+Use supplied information only.
+
+Do not invent additional company facts.
+
+============================================================
+IMAGE
+============================================================
+
+Image URL:
+
+{$image_url}
+
+Return the supplied image URL exactly if it is valid.
+
+Do not invent, replace, shorten, expand or modify the URL.
+
+If no supplied image URL exists, return:
+
+"image_url": ""
+
+============================================================
+RELEVANT LINKS
+============================================================
+
+{$relevant_links}
+
+Use ONLY URLs supplied by the client.
+
+Do not invent URLs.
+
+The final "relevant_links" field must contain only client-supplied URLs.
+
+============================================================
+KEY HIGHLIGHTS
+============================================================
+
+Create up to five concise factual highlights.
+
+Use only supplied information.
+
+Do not invent facts.
+
+Highlights are separate from the main editorial word count.
+
+============================================================
+OUTPUT FORMAT — STRICT JSON
+============================================================
+
+Return ONLY valid JSON.
+
+Do not use Markdown code fences.
+
+Do not write explanations before or after the JSON.
+
+Return exactly this structure:
+
+{
+  "headline": "",
+  "sub_headline": "",
+  "announcement_type": "",
+  "date": "",
+  "city": "",
+  "image_url": "",
+  "dateline": "",
+  "sections": [
+    {
+      "heading": "Opening",
+      "paragraphs": [
+        ""
+      ]
+    },
+    {
+      "heading": "Key Development",
+      "paragraphs": [
+        ""
+      ]
+    },
+    {
+      "heading": "Context and Significance",
+      "paragraphs": [
+        ""
+      ]
+    },
+    {
+      "heading": "Company Outlook",
+      "paragraphs": [
+        ""
+      ]
+    }
+  ],
+  "body": [],
+  "section_headings": [
+    "Opening",
+    "Key Development",
+    "Context and Significance",
+    "Company Outlook"
+  ],
+  "key_highlights": [],
+  "executive_comment": "",
+  "about_company": "",
+  "business_email": "",
+  "relevant_links": []
+}
+
+============================================================
+FIELD RULES
+============================================================
+
+headline:
+
+Final professionally edited headline.
+
+sub_headline:
+
+Final professionally edited subheadline.
+
+announcement_type:
+
+Use the supplied announcement type.
+
+date:
+
+Use the supplied announcement date exactly.
+
+city:
+
+Use the supplied city.
+
+image_url:
+
+Return the supplied image URL exactly if valid.
+
+dateline:
+
+Create a professional dateline beginning with the supplied city when a city is supplied.
+
+Example:
+
+"BERLIN —"
+
+Do not invent a city.
+
+sections:
+
+The main article.
+
+There MUST be exactly four sections.
+
+The headings MUST be:
+
+1. Opening
+2. Key Development
+3. Context and Significance
+4. Company Outlook
+
+Each section must contain one or more complete paragraphs.
+
+The main editorial content should be at least approximately 400 words before returning the final response.
+
+Do not put the executive quote inside these paragraphs when "executive_comment" contains it separately.
+
+body:
+
+For compatibility, return a flat copy of the same main article paragraphs in reading order.
+
+Do not place headings inside body items.
+
+section_headings:
+
+Return exactly:
+
+[
+  "Opening",
+  "Key Development",
+  "Context and Significance",
+  "Company Outlook"
+]
+
+key_highlights:
+
+Return concise factual highlights derived only from the supplied information.
+
+executive_comment:
+
+Return the supplied executive quote after careful grammatical editing.
+
+Return an empty string if no quote was supplied.
+
+about_company:
+
+Professional version of the supplied company description.
+
+business_email:
+
+Return the supplied business email.
+
+relevant_links:
+
+Return only valid URLs supplied by the client.
+
+============================================================
+FINAL INTERNAL CHECK
+============================================================
+
+Before returning the JSON:
+
+1. Confirm that the response contains exactly four sections.
+
+2. Confirm the section headings are in the required order.
+
+3. Check the approximate main editorial word count.
+
+4. If the main editorial content is below 400 words, expand it using relevant supplied facts.
+
+5. If the main editorial content is 400 words or more, finalize it.
+
+6. Do not invent facts to reach the minimum.
+
+7. Do not invent quotations.
+
+8. Do not invent statistics.
+
+9. Do not invent URLs.
+
+10. Do not invent dates or locations.
+
+11. Do not duplicate the executive quote inside the article sections.
+
+12. Do not use key highlights or About Company to artificially increase the article word count.
+
+13. Keep the headline and subheadline distinct.
+
+14. Vary paragraph openings and sentence structures.
+
+15. Remove generic AI and marketing clichés.
+
+16. Use an inverted-pyramid structure.
+
+17. Return valid JSON only.
+
+Do not perform another generation request.
+
+Return ONLY the JSON object.
+PROMPT;
+
+
+	/* =========================================================
+	 * AI GENERATION — SINGLE PASS
+	 * =========================================================
+	 *
+	 * IMPORTANT:
+	 *
+	 * This intentionally uses the plain WordPress AI Client
+	 * generate_text() path.
+	 *
+	 * No JSON schema.
+	 * No model preference.
+	 * No extra generation.
+	 * ========================================================= */
+
+	try {
+
+		$result =
+			wp_ai_client_prompt(
+				$prompt
+			)->generate_text();
+
+	} catch ( Throwable $e ) {
+
+		return new WP_Error(
+			'gnn_ai_generation_failed',
+			'The AI service could not generate the press release. Please try again.',
+			array(
+				'status' => 502,
+			)
+		);
+
+	}
+
+
+	/* =========================================================
+	 * CHECK AI RESULT
+	 * ========================================================= */
+
+	if ( is_wp_error( $result ) ) {
+
+		return new WP_Error(
+			'gnn_ai_generation_failed',
+			$result->get_error_message(),
+			array(
+				'status' => 502,
+			)
+		);
+
+	}
+
+
+	/* =========================================================
+	 * DECODE AI JSON
+	 * ========================================================= */
+
+	$data =
+		gnn_decode_ai_json(
+			$result
+		);
+
+
+	if ( ! is_array( $data ) ) {
+
+		return new WP_Error(
+			'gnn_invalid_ai_response',
+			'The AI returned an invalid response. Please try again.',
+			array(
+				'status' => 502,
+			)
+		);
+
+	}
+
+
+	/* =========================================================
+	 * NORMALIZE
+	 * ========================================================= */
+
+	$data =
+		gnn_normalize_press_release(
+			$data,
+			$company,
+			$headline,
+			$sub_headline,
+			$announcement_type,
+			$announcement_date,
+			$city,
+			$image_url,
+			$executive_quote,
+			$business_email,
+			$about_company,
+			$relevant_links
+		);
+
+
+	/* =========================================================
+	 * EXACTLY FOUR SECTIONS
+	 * =========================================================
+	 *
+	 * The AI is instructed to produce four sections.
+	 *
+	 * This is only a structural safety check.
+	 *
+	 * It does NOT perform another AI request.
+	 * ========================================================= */
+
+	if (
+		! isset( $data['sections'] ) ||
+		! is_array( $data['sections'] ) ||
+		4 !== count( $data['sections'] )
+	) {
+
+		return new WP_Error(
+			'gnn_invalid_sections',
+			'The AI did not return the required four-section press release. Please generate again.',
+			array(
+				'status' => 422,
+			)
+		);
+
+	}
+
+
+	/* =========================================================
+	 * COUNT MAIN EDITORIAL WORDS
+	 * =========================================================
+	 *
+	 * IMPORTANT:
+	 *
+	 * This counter is INFORMATIONAL ONLY.
+	 *
+	 * There is NO minimum rejection.
+	 * There is NO maximum rejection.
+	 * There is NO second AI request.
+	 * ========================================================= */
+
+	$word_count =
+		gnn_count_press_release_words(
+			$data
+		);
+
+
+	/* =========================================================
+	 * FINAL RESPONSE
+	 * ========================================================= */
+
+	return new WP_REST_Response(
+
+		array(
+
+			'success' =>
+				true,
+
+			'word_count' =>
+				$word_count,
+
+			'press_release' =>
+				$data,
+
+		),
+
+		200
+
+	);
+
+}
+
+
+/**
+ * =========================================================
+ * DECODE AI JSON
+ * =========================================================
+ *
+ * Handles:
+ *
+ * - plain JSON
+ * - JSON inside Markdown fences
+ * - JSON surrounded by accidental text
+ * =========================================================
+ */
+
+function gnn_decode_ai_json( $text ) {
+
+
+	$text =
+		trim(
+			(string) $text
+		);
+
+
+	/* ---------------------------------------------------------
+	 * Remove Markdown JSON fences
+	 * --------------------------------------------------------- */
+
+	$text =
+		preg_replace(
+			'/^\s*```(?:json)?\s*/i',
+			'',
+			$text
+		);
+
+
+	$text =
+		preg_replace(
+			'/\s*```\s*$/i',
+			'',
+			$text
+		);
+
+
+	$text =
+		trim(
+			$text
+		);
+
+
+	/* ---------------------------------------------------------
+	 * Direct JSON decode
+	 * --------------------------------------------------------- */
+
+	$data =
+		json_decode(
+			$text,
+			true
+		);
+
+
+	if (
+		is_array(
+			$data
+		)
+	) {
+
+		return $data;
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * Defensive JSON extraction
+	 * --------------------------------------------------------- */
+
+	if (
+		preg_match(
+			'/\{.*\}/s',
+			$text,
+			$matches
+		)
+	) {
+
+		$data =
+			json_decode(
+				$matches[0],
+				true
+			);
+
+
+		if (
+			is_array(
+				$data
+			)
+		) {
+
+			return $data;
+
+		}
+
+	}
+
+
+	return null;
+
+}
+
+
+/**
+ * =========================================================
+ * NORMALIZE PRESS RELEASE
+ * =========================================================
+ */
+
+function gnn_normalize_press_release(
+	$data,
+	$company,
+	$headline,
+	$sub_headline,
+	$announcement_type,
+	$date,
+	$city,
+	$image_url,
+	$executive_quote,
+	$business_email,
+	$about_company,
+	$relevant_links
+) {
+
+
+	/* ---------------------------------------------------------
+	 * FIXED SECTION HEADINGS
+	 * --------------------------------------------------------- */
+
+	$fixed_headings =
+		array(
+
+			'Opening',
+
+			'Key Development',
+
+			'Context and Significance',
+
+			'Company Outlook',
+
+		);
+
+
+	$sections =
+		array();
+
+
+	$body =
+		array();
+
+
+	/* ---------------------------------------------------------
+	 * READ AI SECTIONS
+	 * --------------------------------------------------------- */
+
+	if (
+		isset( $data['sections'] ) &&
+		is_array( $data['sections'] )
+	) {
+
+
+		foreach (
+			array_slice(
+				$data['sections'],
+				0,
+				4
+			) as $index => $section
+		) {
+
+
+			if (
+				! is_array( $section )
+			) {
+
+				$section =
+					array();
+
+			}
+
+
+			$paragraphs =
+				array();
+
+
+			/* -------------------------------------------------
+			 * READ SECTION PARAGRAPHS
+			 * ------------------------------------------------- */
+
+			if (
+				isset( $section['paragraphs'] ) &&
+				is_array( $section['paragraphs'] )
+			) {
+
+
+				foreach (
+					$section['paragraphs'] as $paragraph
+				) {
+
+
+					if (
+						! is_scalar( $paragraph )
+					) {
+
+						continue;
+
+					}
+
+
+					$paragraph =
+						sanitize_textarea_field(
+							$paragraph
+						);
+
+
+					$paragraph =
+						trim(
+							$paragraph
+						);
+
+
+					if (
+						'' !== $paragraph
+					) {
+
+						$paragraphs[] =
+							$paragraph;
+
+
+						$body[] =
+							$paragraph;
+
+					}
+
+				}
+
+			}
+
+
+			/*
+			 * Keep the four sections even if one happens to be
+			 * empty. The frontend always receives the expected
+			 * fixed structure.
+			 */
+
+			$sections[] =
+				array(
+
+					'heading' =>
+						$fixed_headings[ $index ],
+
+					'paragraphs' =>
+						$paragraphs,
+
+				);
+
+		}
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * ENSURE FOUR SECTION OBJECTS EXIST
+	 * --------------------------------------------------------- */
+
+	while (
+		count( $sections ) < 4
+	) {
+
+		$index =
+			count( $sections );
+
+
+		$sections[] =
+			array(
+
+				'heading' =>
+					$fixed_headings[ $index ],
+
+				'paragraphs' =>
+					array(),
+
+			);
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * REBUILD BODY FROM SECTIONS
+	 * --------------------------------------------------------- */
+
+	$body =
+		array();
+
+
+	foreach (
+		$sections as $section
+	) {
+
+		if (
+			isset( $section['paragraphs'] ) &&
+			is_array( $section['paragraphs'] )
+		) {
+
+			foreach (
+				$section['paragraphs'] as $paragraph
+			) {
+
+				if (
+					is_scalar( $paragraph )
+				) {
+
+					$body[] =
+						(string) $paragraph;
+
+				}
+
+			}
+
+		}
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * KEY HIGHLIGHTS
+	 * --------------------------------------------------------- */
+
+	$highlights =
+		array();
+
+
+	if (
+		isset( $data['key_highlights'] ) &&
+		is_array( $data['key_highlights'] )
+	) {
+
+
+		foreach (
+			$data['key_highlights'] as $point
+		) {
+
+
+			if (
+				! is_scalar( $point )
+			) {
+
+				continue;
+
+			}
+
+
+			$point =
+				sanitize_text_field(
+					$point
+				);
+
+
+			$point =
+				trim(
+					$point
+				);
+
+
+			if (
+				'' !== $point
+			) {
+
+				$highlights[] =
+					$point;
+
+			}
+
+
+			if (
+				count( $highlights ) >= 5
+			) {
+
+				break;
+
+			}
+
+		}
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * EXECUTIVE COMMENT
+	 * --------------------------------------------------------- */
+
+	$executive_comment =
+		'';
+
+
+	if (
+		isset( $data['executive_comment'] ) &&
+		is_scalar( $data['executive_comment'] )
+	) {
+
+
+		$executive_comment =
+			sanitize_textarea_field(
+				$data['executive_comment']
+			);
+
+
+		$executive_comment =
+			trim(
+				$executive_comment
+			);
+
+	}
+
+
+	/*
+	 * Never allow an AI-created quote when the client
+	 * supplied no quote.
+	 */
+
+	if (
+		'' === trim(
+			(string) $executive_quote
+		)
+	) {
+
+		$executive_comment =
+			'';
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * RELEVANT LINKS
+	 * --------------------------------------------------------- */
+
+	$supplied_links =
+		array();
+
+
+	if (
+		'' !== trim(
+			$relevant_links
+		)
+	) {
+
+
+		$raw_links =
+			preg_split(
+				'/[\r\n,\s]+/',
+				$relevant_links
+			);
+
+
+		foreach (
+			$raw_links as $link
+		) {
+
+
+			$link =
+				trim(
+					$link
+				);
+
+
+			if (
+				filter_var(
+					$link,
+					FILTER_VALIDATE_URL
+				)
+			) {
+
+				$supplied_links[] =
+					esc_url_raw(
+						$link
+					);
+
+			}
+
+		}
+
+	}
+
+
+	/*
+	 * Never trust AI-generated links.
+	 *
+	 * Only return URLs supplied by the client.
+	 */
+
+	$links =
+		array_values(
+			array_unique(
+				$supplied_links
+			)
+		);
+
+
+	/* ---------------------------------------------------------
+	 * IMAGE URL
+	 * --------------------------------------------------------- */
+
+	/*
+	 * The supplied image URL is authoritative.
+	 *
+	 * The AI cannot replace it.
+	 */
+
+	$final_image_url =
+		$image_url;
+
+
+	/* ---------------------------------------------------------
+	 * HEADLINE
+	 * --------------------------------------------------------- */
+
+	$final_headline =
+		sanitize_text_field(
+			$data['headline'] ?? ''
+		);
+
+
+	if (
+		'' === trim(
+			$final_headline
+		)
+	) {
+
+		$final_headline =
+			$headline
+			? $headline
+			: $company .
+				' Announces Company Update';
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * SUBHEADLINE
+	 * --------------------------------------------------------- */
+
+	$final_sub_headline =
+		sanitize_text_field(
+			$data['sub_headline'] ?? ''
+		);
+
+
+	if (
+		'' === trim(
+			$final_sub_headline
+		) &&
+		'' !== trim(
+			$sub_headline
+		)
+	) {
+
+		$final_sub_headline =
+			$sub_headline;
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * ANNOUNCEMENT TYPE
+	 * --------------------------------------------------------- */
+
+	$final_announcement_type =
+		sanitize_text_field(
+			$data['announcement_type'] ??
+			$announcement_type
+		);
+
+
+	if (
+		'' === trim(
+			$final_announcement_type
+		)
+	) {
+
+		$final_announcement_type =
+			$announcement_type;
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * DATE
+	 * --------------------------------------------------------- */
+
+	$final_date =
+		sanitize_text_field(
+			$data['date'] ??
+			$date
+		);
+
+
+	if (
+		'' === trim(
+			$final_date
+		)
+	) {
+
+		$final_date =
+			$date;
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * CITY
+	 * --------------------------------------------------------- */
+
+	$final_city =
+		sanitize_text_field(
+			$data['city'] ??
+			$city
+		);
+
+
+	if (
+		'' === trim(
+			$final_city
+		)
+	) {
+
+		$final_city =
+			$city;
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * DATELINE
+	 * --------------------------------------------------------- */
+
+	$dateline =
+		'';
+
+
+	if (
+		isset( $data['dateline'] ) &&
+		is_scalar( $data['dateline'] )
+	) {
+
+		$dateline =
+			sanitize_text_field(
+				$data['dateline']
+			);
+
+
+		$dateline =
+			trim(
+				$dateline
+			);
+
+	}
+
+
+	/*
+	 * Deterministic fallback from supplied city.
+	 */
+
+	if (
+		'' === $dateline &&
+		'' !== trim( $city )
+	) {
+
+		$dateline =
+			strtoupper(
+				$city
+			) .
+			' —';
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * ABOUT COMPANY
+	 * --------------------------------------------------------- */
+
+	$final_about_company =
+		sanitize_textarea_field(
+			$data['about_company'] ??
+			$about_company
+		);
+
+
+	if (
+		'' === trim(
+			$final_about_company
+		)
+	) {
+
+		$final_about_company =
+			$about_company;
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * BUSINESS EMAIL
+	 * --------------------------------------------------------- */
+
+	/*
+	 * Client-supplied email is authoritative.
+	 */
+
+	$final_business_email =
+		$business_email;
+
+
+	/* ---------------------------------------------------------
+	 * FINAL ARRAY
+	 * --------------------------------------------------------- */
+
+	return array(
+
+		'headline' =>
+			$final_headline,
+
+		'sub_headline' =>
+			$final_sub_headline,
+
+		'announcement_type' =>
+			$final_announcement_type,
+
+		'date' =>
+			$final_date,
+
+		'city' =>
+			$final_city,
+
+		'image_url' =>
+			$final_image_url,
+
+		'dateline' =>
+			$dateline,
+
+		'sections' =>
+			$sections,
+
+		/*
+		 * Keep body[] for compatibility with the existing
+		 * frontend and integrations.
+		 */
+
+		'body' =>
+			$body,
+
+		'section_headings' =>
+			$fixed_headings,
+
+		'key_highlights' =>
+			$highlights,
+
+		'executive_comment' =>
+			$executive_comment,
+
+		'about_company' =>
+			$final_about_company,
+
+		'business_email' =>
+			$final_business_email,
+
+		'relevant_links' =>
+			$links,
+
+	);
+
+}
+
+
+/**
+ * =========================================================
+ * WORD COUNT
+ * =========================================================
+ *
+ * This is INFORMATIONAL ONLY.
+ *
+ * There is deliberately NO:
+ *
+ * - minimum rejection
+ * - maximum rejection
+ * - retry
+ * - second AI request
+ *
+ * The frontend receives the final word count so it can be
+ * displayed or used elsewhere.
+ *
+ * Counted:
+ *
+ * - four section paragraphs
+ * - executive comment
+ *
+ * Excluded:
+ *
+ * - headline
+ * - subheadline
+ * - headings
+ * - metadata
+ * - highlights
+ * - About Company
+ * - email
+ * - links
+ * =========================================================
+ */
+
+function gnn_count_text_words( $text ) {
+
+
+	$text =
+		trim(
+			wp_strip_all_tags(
+				(string) $text
+			)
+		);
+
+
+	if (
+		'' === $text
+	) {
+
+		return 0;
+
+	}
+
+
+	$words =
+		preg_split(
+			'/\s+/u',
+			$text,
+			-1,
+			PREG_SPLIT_NO_EMPTY
+		);
+
+
+	return is_array(
+		$words
+	)
+		? count( $words )
+		: 0;
+
+}
+
+
+/**
+ * =========================================================
+ * COUNT PRESS RELEASE WORDS
+ * =========================================================
+ */
+
+function gnn_count_press_release_words( $data ) {
+
+
+	$text =
+		'';
+
+
+	/* ---------------------------------------------------------
+	 * FOUR SECTION PARAGRAPHS
+	 * --------------------------------------------------------- */
+
+	if (
+		isset( $data['sections'] ) &&
+		is_array( $data['sections'] )
+	) {
+
+
+		foreach (
+			$data['sections'] as $section
+		) {
+
+
+			if (
+				! is_array( $section ) ||
+				! isset( $section['paragraphs'] ) ||
+				! is_array( $section['paragraphs'] )
+			) {
+
+				continue;
+
+			}
+
+
+			foreach (
+				$section['paragraphs'] as $paragraph
+			) {
+
+
+				if (
+					is_scalar( $paragraph )
+				) {
+
+					$text .=
+						' ' .
+						(string) $paragraph;
+
+				}
+
+			}
+
+		}
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * EXECUTIVE COMMENT
+	 * --------------------------------------------------------- */
+
+	if (
+		isset( $data['executive_comment'] ) &&
+		is_scalar( $data['executive_comment'] ) &&
+		'' !== trim(
+			(string) $data['executive_comment']
+		)
+	) {
+
+		$text .=
+			' ' .
+			(string) $data['executive_comment'];
+
+	}
+
+
+	/* ---------------------------------------------------------
+	 * FINAL COUNT
+	 * --------------------------------------------------------- */
+
+	$text =
+		trim(
+			wp_strip_all_tags(
+				$text
+			)
+		);
+
+
+	if (
+		'' === $text
+	) {
+
+		return 0;
+
+	}
+
+
+	$words =
+		preg_split(
+			'/\s+/u',
+			$text,
+			-1,
+			PREG_SPLIT_NO_EMPTY
+		);
+
+
+	return is_array(
+		$words
+	)
+		? count( $words )
+		: 0;
+
+}
